@@ -1,2 +1,2 @@
 # pandasField
- Python pandas-based functions for manipulating, extracting and analysing archaeological data from iDAIfield databases
+ Python pandas-based interface to idai.field databases. Functions for manipulating, extracting and analysing archaeological data.
