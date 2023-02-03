@@ -1,0 +1,19 @@
+{
+    "TRACK": "identifier",
+    "AMOUNT":"amount", 
+    "PRESERVATI":"condition",
+    "VESSEL_PAR":"vesselpart",
+    "TECHNIQUE":"manufacturingMethod",
+    "FIRING":"Firing",
+    "RECORDED_B":"processor",
+    "PERSERVED_":"conditionPercent",
+    "FABRIC_TYP":"temper",
+    "FABRIC_QU2":"temperAmount",
+    "FABRIC_QUA":"temperParticles",
+    "COLOUR_OF_": "clayColorOutside",
+    "SURFACE": "coatOutsideType",
+    "DATING_PRO": "period",
+    "DRAWING": "DrawingId",
+    "COMMENTS":"description",
+    "TYPE_NAME":"FormComparisonCompendiadetail"
+}

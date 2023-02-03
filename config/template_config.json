@@ -1,0 +1,7 @@
+{
+"auth": "('','blub')",
+"db_url": "http://localhost:3001",
+"imagestore": "/home/imagestore/",
+"db_name": "uruk"
+
+}
