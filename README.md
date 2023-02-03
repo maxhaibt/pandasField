@@ -1,6 +1,6 @@
 # pandasField
-![field](https://github.com/maxhaibt/pandasField/blob/main/readme-images/field-logo.png)
-![pandas](https://github.com/maxhaibt/pandasField/blob/main/readme-images/pandas-logo.png)
+![field](https://github.com/maxhaibt/pandasField/blob/main/readme-images/fieldAndpandas-logo.png)
+
  Python pandas-based data-science functions for manipulating, extracting and analysing archaeological data recorded with the field research documentation system([Field](https://github.com/dainst/idai-field)).
 
 ## Only Developer Usage
