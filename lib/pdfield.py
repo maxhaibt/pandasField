@@ -184,6 +184,7 @@ def DFtoDOC(DFresources, docfields):
     DOChull['docs']=DOC
     return DOChull
 
+
 def flatten(t):
     return [item for sublist in t for item in sublist]
 
@@ -215,6 +216,7 @@ def addModifiedEntry(series):
     series['modified'].append(entry)
     return series
 
+
 def divide_chunks(l, n):
     # looping till length l
     for i in range(0, len(l), n): 
@@ -232,6 +234,12 @@ def bulkSaveChanges(api, DOC, db_name=None):
     return print('Documents uploaded')
 
 
+
+def expand_dict_column(df, column_name):
+    expansion = df[column_name].apply(pd.Series)
+    expansion = expansion.rename(columns={col: f"{column_name}_{col}" for col in expansion.columns if col != column_name})
+    expanded_df = pd.concat([df, expansion], axis=1)
+    return expanded_df
 
 
 def moveValues2otherField(series, inputfield, outputfield, valuelist):
@@ -403,6 +411,31 @@ def adaptListitemsByMap(series,inputfield,normmap):
         #print(series[inputfield])
     
     return series
+
+
+def fuzzyAdaptStringsByNormstrings(series,inputfield,normitems, fuzziness=0.85, keepunmatchedvalues = True):
+    if type(series[inputfield]) == str:
+        try:
+            #print('input color: ', i)
+            match =difflib.get_close_matches( series[inputfield], normitems,1,fuzziness)[0]
+            #print('match color: ', match)
+            if not match in ['None','none','nan']:
+                series[inputfield] = match
+            if match in ['None','none','nan']:
+                series[inputfield] = None
+        except:
+            print('No norm found for: ',series[inputfield])
+            if not keepunmatchedvalues:
+                series[inputfield] = None
+    return series
+
+def sort_df_by_list(df, column_name, order_list):
+    order_dict = {value: index for index, value in enumerate(order_list)}
+    df[column_name] = df[column_name].map(order_dict)
+    df = df.sort_values(by=[column_name])
+    return df
+    
+
 
 def fuzzyAdaptListitemsByNormitems(series,inputfield,normitems, fuzziness=0.85):
     if type(series[inputfield]) == list:
