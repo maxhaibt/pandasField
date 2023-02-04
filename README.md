@@ -17,9 +17,12 @@
 7. Based on the jupyternotebooks
 
 ## Code-Base
-OldData2Field_exampleUrukProject.ipynb you can figure out how to use the functions of /lib/pdfield.py to import messy data into your Field-project. Mind the specific mappings defined in /example_mappings_messydata/... to manipulate your values.
+In OldData2Field_exampleUrukProject.ipynb you can figure out how to use the functions of /lib/pdfield.py to import messy data into your Field-project. Mind the specific mappings defined in /example_mappings_messydata/... to manipulate your values.
 
-FieldAnalysis_exampleUrukProject.ipynb uses the functions of /lib/pdfield.py, in order to visualise and analyse the data in your Field-database. Use the code as a basis for your own analysis.
+The FieldAnalysis_exampleUrukProject.ipynb uses the functions of /lib/pdfield.py, in order to visualise and analyse the data in your Field-database. Use the code as a basis for your own analysis. To produce plots like these and more:
+
+![field](https://github.com/maxhaibt/pandasField/blob/main/readme-images/plot_wes_findsinperiods.png)
+
 
 
 

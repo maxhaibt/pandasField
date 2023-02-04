@@ -435,7 +435,9 @@ def sort_df_by_list(df, column_name, order_list):
     df = df.sort_values(by=[column_name])
     return df
     
-
+def sort_series_by_list(series, sort_list):
+    sort_index = [i for i in sort_list if i in series.index]
+    return series.loc[sort_index].reindex(sort_index)
 
 def fuzzyAdaptListitemsByNormitems(series,inputfield,normitems, fuzziness=0.85):
     if type(series[inputfield]) == list:
