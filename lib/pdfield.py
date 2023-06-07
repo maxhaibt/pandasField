@@ -20,6 +20,101 @@ import json
 import dateutil.parser as dparser
 import pytz
 from decimal import Decimal
+import cv2
+import win32com.client as win32
+import os
+from reportlab.lib.pagesizes import letter
+from reportlab.lib import colors
+from reportlab.lib.units import inch
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import A4
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Image
+from reportlab.lib.styles import ParagraphStyle
+import cv2
+from io import BytesIO
+
+
+
+
+
+###Working with QR-code tagged images
+def rename_with_number(filename):
+    """
+    Renames a file by appending a number to the filename if it already exists.
+    Returns the new filename.
+    """
+    if not os.path.isfile(filename):
+        # File doesn't exist, no need to rename
+        return filename
+    
+    # Split filename into base and extension
+    base, ext = os.path.splitext(filename)
+    
+    # Check for existing numbered filenames
+    existing_files = [f for f in os.listdir() if f.startswith(base) and f.endswith(ext) and f != filename]
+    if not existing_files:
+        # No existing numbered filenames, rename to "filename (1).ext"
+        new_filename = f"{base} (1){ext}"
+    else:
+        # Get the highest number from existing filenames and add 1
+        existing_numbers = [int(f.split('(')[-1].split(')')[0]) for f in existing_files]
+        new_number = max(existing_numbers) + 1
+        new_filename = f"{base} ({new_number}){ext}"
+    
+    # Rename the file
+    os.rename(filename, new_filename)
+    
+
+
+def getUnlinkedImages(df):
+    newdf = pd.DataFrame()
+    for index, row in df.iterrows():
+        if not row['relations'].get('depicts') and row['type']=='Photo':
+            newdf = newdf.append(row)
+    return newdf
+
+
+def detect_and_rename_qr(folder_path):
+    # Create a QRCodeDetector object
+    qr_detector = cv2.QRCodeDetector()
+
+    # Loop through all the files in the folder
+    for filename in os.listdir(folder_path):
+        if filename.endswith('.JPG') or filename.endswith('.png'):
+            # Read the image using OpenCV
+            image_path = os.path.join(folder_path, filename)
+            image = cv2.imread(image_path)
+
+            # Detect the QR-code in the image
+            data, bbox, _ = qr_detector.detectAndDecode(image)
+
+            # If a QR-code is detected, extract the string and rename the image
+            if bbox is not None and data.strip().startswith('WESid'):
+                qr_code_text = data.strip()
+                new_filename = qr_code_text + '.png'
+                new_image_path = os.path.join(folder_path, new_filename)
+
+                # Check if the new filename already exists
+                if os.path.exists(new_image_path):
+                    # Append a number to the filename
+                    count = 1
+                    while True:
+                        count += 1
+                        new_filename = qr_code_text + f'_{count}.png'
+                        new_image_path = os.path.join(folder_path, new_filename)
+                        if not os.path.exists(new_image_path):
+                            break
+                
+                # Rename the image and save it in the same folder
+                os.rename(image_path, new_image_path)
+
+
+
+
+
+
+
+
 
 ##General functions to access Field-database###
 
@@ -79,6 +174,16 @@ def getAllDocs(api):
     return collect
 
 ### General functions to convert documents from couchdb to pandas dataframe and reverse ###
+
+def getPathToImage_IsdepictedIn(series, imagestorepath):
+    image = series['relations'].get('isDepictedIn')
+    if image:
+        if Path(imagestorepath / image[0]).is_file():
+            return Path(imagestorepath / image[0])
+
+    
+
+
 
 def DOCtoDF(DOC):
     DFdocs = pd.DataFrame(DOC)
@@ -185,8 +290,111 @@ def DFtoDOC(DFresources, docfields):
     return DOChull
 
 
+def readNoextensionImage(file):
+    #filepath = os.path.join(tempfolder, os.path.basename(file) + '.' + extension)
+    openfile = open(file, 'rb')
+    image = np.asarray(bytearray(openfile.read()), dtype="uint8")
+    image = cv2.imdecode(image, cv2.IMREAD_COLOR)
+    return image
+
+###PDF from Field-DB
+
+
+def createPDF(df, imagestorepath, outputpath):
+    # Create PDF document
+    doc = SimpleDocTemplate(outputpath, pagesize=A4, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
+
+    # Create table data
+    table_data = []
+    # Add header row
+    header_row = [
+        Paragraph('Sample number', ParagraphStyle('header')),
+        Paragraph('Identifier', ParagraphStyle('header')),
+        Paragraph('Sample Type', ParagraphStyle('header')),
+        Paragraph('Context', ParagraphStyle('header')),
+        Paragraph('Image', ParagraphStyle('header')),
+    ]
+    table_data.append(header_row)
+
+    for index, row in df.iterrows():
+        imagepath = getPathToImage_IsdepictedIn(row, imagestorepath)
+        if imagepath:
+            tempimage = readNoextensionImage(imagepath)
+            scale_percent=15
+            width = int(tempimage.shape[1] * scale_percent / 100)
+            height = int(tempimage.shape[0] * scale_percent / 100)    
+            tempimage = cv2.resize(tempimage,(width,height))
+            cv2.imwrite('D:/UrukLarge/WES_paleoenvi/Proben_Bilder/tempimages/' + row['identifier'] + '.jpg', tempimage)
+            image=Image('D:/UrukLarge/WES_paleoenvi/Proben_Bilder/tempimages/' + row['identifier'] + '.jpg') 
+            image.drawHeight = (height/310)*inch
+            image.drawWidth = (width/310)*inch    
+            
+            # Add line breaks to context column
+            context_text = row['context']
+            max_chars_per_line = 50
+            if len(context_text) > max_chars_per_line:
+                context_text = '<br/>'.join(context_text[i:i+max_chars_per_line] for i in range(0, len(context_text), max_chars_per_line))
+            context = Paragraph(context_text, ParagraphStyle('body'))
+            # Add a new column with the row number starting from 1
+            sample_number = Paragraph(str(index + 1), ParagraphStyle('body'))
+            table_row = [
+                sample_number,
+                Paragraph(row['identifier'], ParagraphStyle('body')),
+                Paragraph(row['sampleType'], ParagraphStyle('body')),
+                context,
+                image,
+            ]
+            table_data.append(table_row)
+    table = Table(table_data)
+    # Define table style
+    table_style = TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 12),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+        ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
+        ('ALIGN', (0, 1), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 12),
+        ('INNERGRID', (0, 0), (-1, -1), 0.25, colors.black),
+        ('BOX', (0, 0), (-1, -1), 0.25, colors.black),
+    ])
+
+    table.setStyle(table_style)
+
+    # Add table to document and save
+    doc.build([table])
+
 def flatten(t):
     return [item for sublist in t for item in sublist]
+
+def getIdentifiersOfRelatedResources(series, relation, alldb, outputfield):
+    IdentifiersOfRelatedResource = []
+    try:
+        relatedresourcesids = series.get('relations').get(relation)
+        #print(relatedresourcesids)
+        if relatedresourcesids:
+            for relatedresourcesid in relatedresourcesids:
+                IdentifiersOfRelatedResource.append(alldb[alldb['id']==relatedresourcesid]['identifier'])
+
+    except:
+        IdentifiersOfRelatedResource = [['none']]
+    series[outputfield]= flatten(IdentifiersOfRelatedResource)
+    return series
+
+def filterDFBySubstringInField(df, inputfield, substring):
+    notnull_df= df[df[inputfield].notnull()]
+    filtered_df=notnull_df[notnull_df[inputfield].str.contains(substring)]
+    return filtered_df
+
+def clean_list_column(series, inputfield):
+    # remove any brackets and quotes
+    series[inputfield] = str(series[inputfield]).replace('[','').replace(']','').replace("'",'')
+    return series
+
 
 def getListOfDBs(db_url, auth):
     pouchDB_url_alldbs = f'{db_url}/_all_dbs'
@@ -262,6 +470,13 @@ def moveValues2otherField(series, inputfield, outputfield, valuelist):
             series[outputfield] = series[outputfield] + output
     return series
 
+
+def simpleunduplicateSelection(selectdfseries, alldf, field = 'identifier', suffix='_undup'):
+    meanddups = alldf[alldf[field] == selectdfseries[field]]
+    onlydups = meanddups[~(meanddups['id']==selectdfseries['id'])]
+    if not onlydups.empty:
+        selectdfseries[field] = selectdfseries[field] + suffix
+    return selectdfseries
 
 
 
